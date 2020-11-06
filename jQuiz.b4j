@@ -1,0 +1,66 @@
+﻿AppType=StandardJava
+Build1=Default,com.puterise.quiz.api
+File1=config.properties
+FileGroup1=New Group
+Group=Default Group
+Library1=jcore
+Library2=jserver
+Library3=jsql
+Library4=json
+Library5=javaobject
+Module1=APIHandler
+Module2=HttpsFilter
+Module3=Utility
+NumberOfFiles=1
+NumberOfLibraries=5
+NumberOfModules=3
+Version=8.5
+@EndOfDesignText@
+'Non-UI application (console / server application)
+#Region Project Attributes 
+	#CommandLineArgs:
+	#MergeLibraries: True 
+#End Region
+
+' MySQL Connector
+#AdditionalJar: mysql-connector-java-5.1.37-bin
+
+Sub Process_Globals
+	Public srvr As Server
+	Public const ELEMENT_ROOT As Int = 0
+	Public const ELEMENT_ACTION As Int = 1
+	Public const ELEMENT_ID As Int = 2
+	Public const MAX_ELEMENTS As Int = 3
+	Public const VERSION As Float = 1.02
+End Sub
+
+Sub AppStart (Args() As String)
+	Dim config As Map = Utility.LoadConfigMap
+	srvr.Initialize("")	
+	#If RELEASE
+	ConfigureSSL(config.Get("SSLPort"))	
+	#End If
+	srvr.Port = config.Get("ServerPort")
+	srvr.AddHandler("", "APIHandler", False)
+	srvr.AddHandler("/*", "APIHandler", False)
+	srvr.Start
+	Log($"API server (version = $1.2{VERSION}) is running on port ${srvr.Port}"$)
+	#If RELEASE
+	Log($"Response will be redirected to port ${srvr.SslPort}"$)
+	#End If
+	StartMessageLoop
+End Sub
+
+Private Sub ConfigureSSL (SslPort As Int)
+	'example of SSL connector configuration
+	Dim ssl As SslConfiguration
+	ssl.Initialize
+	#If RELEASE
+	ssl.SetKeyStorePath("/etc/letsencrypt/live/api.puterise.com", "jetty.keystore") 'path to keystore file
+	#End If
+	ssl.KeyStorePassword = "keystorepassword"
+	'ssl.KeyManagerPassword = "passwordkeystore"
+	srvr.SetSslConfiguration(ssl, SslPort)
+	'add filter to redirect all traffic from http to https (optional)
+	srvr.AddFilter("/*", "HttpsFilter", False)
+End Sub
